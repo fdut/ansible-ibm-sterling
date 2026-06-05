@@ -3,23 +3,23 @@
 # Declare variables to be passed into your templates.
 
 # Replic number for CDWS pod
-replicaCount: {{ cdws_replica_count }}
+replicaCount: 1
 
 # Specify the respective Docker Image details for CDWS
 image:
   # Specify the repository name alongwith image name
-  repository: "{{ compatibility_matrix[cdws_version].image_repository }}"
+  repository: cp.icr.io/cp/ibm-cdws/cdws
   # Specify respective pull policy to be used to override default `IfNotPresent` policy
   pullPolicy: Always
   # Specify the image pull secret for the service, if the image is in private registry 
   # protected with password
-  imageSecrets: "{{ cdws_registry_secret }}"
+  imageSecrets: ""
   # Enable true/false to pull image from Entitled Registry using below digest
   digest:
     enabled: false
-    value: ""
+    value: "sha256:e83264b5200685cfa2a6f34be24bec3f443f44aecc44e0afaa2b077bd6d79731"
   # Specify the tag name for the image in double quotes
-  tag: "{{ compatibility_matrix[cdws_version].image_tag }}"
+  tag: "6.4.0.8_iFix00-2026-05-22"
 
 # If you want to override the default full name( <release name>-ibm-cdws )
 nameOverride: ""
@@ -65,7 +65,7 @@ cdwsParams:
   # Specify label for self-signed/ca-signed certificate
   certificateLabel: "mftwebservices"
   # Specify expiration time for self-signed certificate in days
-  certificateExpiryTime: 3650
+  certificateExpiryTime: 365
   # Specify the common name for self-signed certificate
   commonName: "localhost"
   # Specify the organization name for self-signed certificate
@@ -130,12 +130,12 @@ defaultPodDisruptionBudget:
 # ref: http://kubernetes.io/docs/user-guide/compute-resources/
 resources:
   limits:
-    cpu: {{ cdws_cpu_limits }}
-    memory: {{ cdws_mem_limits }}
+    cpu: 3000m
+    memory: 2Gi
     ephemeral-storage: "3Gi"
   requests:
-    cpu: {{ cdws_cpu_requests }}
-    memory: {{ cdws_mem_requests }}
+    cpu: 1500m
+    memory: 1Gi
     ephemeral-storage: "2Gi"
 
 # Configure resource requests and limits for init container
@@ -180,9 +180,9 @@ autoscaling:
   # Specify to enable autoscaling.
   enabled: true
   # Specfiy to define number of minumum replicas of pods when autoscaling is enabled
-  minReplicas: {{ cdws_replica_count }}
+  minReplicas: 1
   # Specfiy to define number of maximum replicas of pods when autoscaling is enabled
-  maxReplicas: 3
+  maxReplicas: 2
   # Specify target CPU utilization in percentage to autoscale
   targetCPUUtilizationPercentage: 70
   # Specify target memory utilization in percentage to autoscale
@@ -194,24 +194,24 @@ persistence:
   # enabled is whether to use Persistent Volumes or not
   enabled: true
   # useDynamicProvisioning is whether or not to use Storage Classes to dynamically create Persistent Volumes 
-  useDynamicProvisioning: {{ cdws_use_dynamic_provisioning }}
+  useDynamicProvisioning: false
 
 # Specify these fields for Persistence Volume Claim details
 pvClaim:
   # Specify the existing PV claim name to be used for deployment
   existingClaimName: ""
   # Specify this to use any Storage Class for PVC
-  storageClassName: "{{ storage_class_matrix[ storage_class_provider ].rwx }}" 
+  storageClassName: "manual"
   # Specify persistent volume access mode
   # ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
-  accessMode: "ReadWriteMany"
+  accessMode: "ReadWriteOnce"
   selector:
     # Specify this to use selector label name for PV-PVC bind
     label: ""
     # Specify this to use selector label value for PV-PVC bind
     value: ""
   # Specify this to request specific size on persistent volume.
-  size: {{ cdws_storage_capacity }}
+  size: 500Mi
 
 # persistence volume for providing absolute path for files when required
 persistentVolumeExtra:
@@ -262,16 +262,16 @@ arch: "amd64"
 
 # Change license to true to indicate that you have read and agree to license agreements
 # Refer: https://www-40.ibm.com/software/sla/sladb.nsf (L/N: L-ZWKV-MQ9Z94)
-license: true
+license: false
 
 # Specify the license edition as per license agreement. Valid value is prod or non-prod for Production and 
 # Non-production respectively. Remember that this parameter is crucial for IBM Licensing and Metering Service
-licenseType: "{{ cdws_license_type }}"
+licenseType: prod
 
 # Specify the Secret configuration for CDWS
 secret:
   # Secret with all passwords such as keystore and truststore passwords.
-  secretName:  "{{ cdws_secret }}"
+  secretName:  ""
   # Secret name for CA-signed certificate.
   caCertSecretName: ""
   # Secret name for trusted certificate.
@@ -284,7 +284,7 @@ secComp:
   profile: ""
 
 #set timezone of container
-timeZone: "{{ cdws_timezone }}"
+timeZone: "Asia/Calcutta"
 
 # To specify IP and hostname mapping for DNS resolution.
 hostAliases:
