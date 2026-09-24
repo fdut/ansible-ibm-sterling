@@ -1446,7 +1446,7 @@ identityService:
   service:
     type: ClusterIP
     externalPort: 443
-    externalIP:
+    externalIP: ""
   ingress:
     enabled: true
     host: "{{ si_helm_values.identityService.ingress.internal.host }}"
