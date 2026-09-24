@@ -26,7 +26,7 @@ spec:
     - name: custom-image
       description: Custom Docker image with oc, kubectl, helm, git, ansible
       type: string
-      default: "quay.io/ibm-sterling-devops/sterling-cli:1.0.0"
+      default: "quay.io/frederic_dutheil_fr/sterling-tools:latest"
     - name: verbose
       description: Ansible verbosity level (-v, -vv, -vvv, -vvvv)
       type: string
@@ -46,6 +46,10 @@ spec:
           value: $(params.playbook-path)
         - name: WORK_DIR
           value: /opt/app-root/src
+        - name: ANSIBLE_VERBOSE
+          value: $(params.verbose)
+        - name: ANSIBLE_EXTRA_ARGS
+          value: $(params.extra-args)
       envFrom:
         - configMapRef:
             name: $(params.configmap-name)
@@ -63,43 +67,40 @@ spec:
         echo "Playbook: ${PLAYBOOK_PATH}"
         echo "Working Directory: ${WORK_DIR}"
         echo "=========================================="
-        
+
         # Configure OpenShift/Kubernetes authentication
         echo "Configuring OpenShift authentication..."
-        
+
         if [ -z "${OCP_SERVER}" ] || [ -z "${OCP_TOKEN}" ]; then
           echo "ERROR: OCP_SERVER or OCP_TOKEN not set"
           echo "Please run setup-credentials.sh script first"
           exit 1
         fi
-        
+
         # Login to OpenShift using credentials from secret
         echo "Logging in to OpenShift..."
         oc login --server="${OCP_SERVER}" --token="${OCP_TOKEN}"
-        
+
         # Verify login
         echo "Logged in as: $(oc whoami)"
         echo "Current project: $(oc project -q)"
-        
+
         # Export KUBECONFIG for Ansible kubernetes.core modules
         export KUBECONFIG="${HOME}/.kube/config"
         export K8S_AUTH_KUBECONFIG="${KUBECONFIG}"
-        
+
         # Preserve ENTITLED_REGISTRY_KEY
         if [ -n "${ENTITLED_REGISTRY_KEY}" ]; then
           echo "ENTITLED_REGISTRY_KEY is set"
-          export ENTITLED_REGISTRY_KEY="${ENTITLED_REGISTRY_KEY}"
         fi
 
         echo "=========================================="
-        
-        # Change to working directory
-        cd "ansible-ibm-sterling"
 
-        # Clone repository (fresh clone every time)
-        echo "Update repository..."
-        git pull 
-        echo "Git pull completed"
+        # Clone repository fresh into WORK_DIR
+        echo "Cloning repository..."
+        git clone "${GIT_URL}" "${WORK_DIR}"
+        cd "${WORK_DIR}"
+        echo "Clone completed"
 
         echo "=========================================="
         echo "Current commit:"
@@ -112,32 +113,32 @@ spec:
           exit 1
         fi
 
-        # Build ansible-playbook command
+        # Build ansible-playbook command using env vars (not Tekton param substitution)
         ANSIBLE_CMD="ansible-playbook"
-        
-        if [ -n "$(params.verbose)" ]; then
-          ANSIBLE_CMD="${ANSIBLE_CMD} $(params.verbose)"
+
+        if [ -n "${ANSIBLE_VERBOSE}" ]; then
+          ANSIBLE_CMD="${ANSIBLE_CMD} ${ANSIBLE_VERBOSE}"
         fi
-        
-        if [ -n "$(params.extra-args)" ]; then
-          ANSIBLE_CMD="${ANSIBLE_CMD} $(params.extra-args)"
+
+        if [ -n "${ANSIBLE_EXTRA_ARGS}" ]; then
+          ANSIBLE_CMD="${ANSIBLE_CMD} ${ANSIBLE_EXTRA_ARGS}"
         fi
-        
+
         ANSIBLE_CMD="${ANSIBLE_CMD} ${PLAYBOOK_PATH}"
 
         echo "Executing: ${ANSIBLE_CMD}"
         echo "=========================================="
-        
+
         # Execute playbook
         ${ANSIBLE_CMD}
-        
         EXIT_CODE=$?
+
         echo "=========================================="
         if [ ${EXIT_CODE} -eq 0 ]; then
-          echo "✓ Deployment completed SUCCESSFULLY"
+          echo "Deployment completed SUCCESSFULLY"
         else
-          echo "❌ Deployment FAILED with exit code: ${EXIT_CODE}"
+          echo "Deployment FAILED with exit code: ${EXIT_CODE}"
         fi
         echo "=========================================="
-        
+
         exit ${EXIT_CODE}

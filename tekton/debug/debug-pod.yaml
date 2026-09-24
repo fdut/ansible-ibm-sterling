@@ -1,0 +1,91 @@
+---
+# Debug pod — mirrors the sterling-deploy-task environment exactly.
+# Use this to interactively test the image before running the pipeline.
+#
+# Usage:
+#   1. Apply:   oc apply -f tekton/debug/debug-pod.yaml -n sterling-deployer
+#   2. Exec in: oc exec -it sterling-debug -n sterling-deployer -- /bin/bash
+#   3. Inside the pod, run the quick checks listed at the bottom of this file.
+#   4. Clean up: oc delete pod sterling-debug -n sterling-deployer
+#
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sterling-debug
+  namespace: sterling-deployer
+  labels:
+    app: sterling-debug
+    purpose: troubleshooting
+spec:
+  # Same service account as the pipeline so RBAC is identical
+  serviceAccountName: tekton-deployer-sa
+
+  # Never restart — this is a one-shot debug session
+  restartPolicy: Never
+
+  containers:
+    - name: tools
+      image: quay.io/frederic_dutheil_fr/sterling-tools:latest
+      imagePullPolicy: Always
+
+      # Keep the container alive so you can exec into it
+      command: ["/bin/bash", "-c", "sleep infinity"]
+
+      # ---- same env as the Tekton task ----
+      env:
+        - name: GIT_URL
+          value: "https://github.com/fdut/ansible-ibm-sterling.git"
+        - name: PLAYBOOK_PATH
+          value: "playbooks/deploy_sb2b.yml"
+        - name: WORK_DIR
+          value: /opt/app-root/src
+        - name: ANSIBLE_EXTRA_ARGS
+          value: "-e sb2bi_deploy_db2_enabled=true -e sb2bi_setup_db2_enabled=false -e sb2bi_deploy_mq_enabled=false -e sb2bi_deploy_enabled=false"
+        - name: ANSIBLE_VERBOSE
+          value: "-vvv"
+
+      # ---- same secrets/configmap as the Tekton task ----
+      envFrom:
+        - configMapRef:
+            name: sterling-b2bi-config
+            optional: true
+        - secretRef:
+            name: sterling-deploy-secrets
+            optional: false
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+
+# ============================================================
+# Quick checks to run once inside the pod (oc exec -it ...)
+# ============================================================
+#
+# 1. Verify all tools are present and show their architecture:
+#
+#      file $(which bash oc kubectl helm ansible-playbook python3)
+#
+# 2. Check the shebang Tekton would write (must start at byte 0):
+#
+#      printf '#!/bin/bash\necho ok\n' > /tmp/test.sh
+#      chmod +x /tmp/test.sh
+#      /tmp/test.sh
+#
+# 3. Confirm OCP credentials are injected from the secret:
+#
+#      echo "OCP_SERVER=${OCP_SERVER}"
+#      echo "OCP_TOKEN length: ${#OCP_TOKEN}"
+#
+# 4. Test OCP login:
+#
+#      oc login --server="${OCP_SERVER}" --token="${OCP_TOKEN}"
+#      oc whoami
+#
+# 5. Clone the repo and run the exact ansible command the task would run:
+#
+#      cd /workspace
+#      git clone https://github.com/fdut/ansible-ibm-sterling.git
+#      cd ansible-ibm-sterling
+#      ansible-playbook ${ANSIBLE_EXTRA_ARGS} ${ANSIBLE_VERBOSE} ${PLAYBOOK_PATH}
+#
