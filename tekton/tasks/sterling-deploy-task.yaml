@@ -41,7 +41,7 @@ spec:
       imagePullPolicy: Always
       env:
         - name: GIT_URL
-          value: "https://github.com/ibm-sterling-devops/ansible-ibm-sterling.git"
+          value: "https://github.com/fdut/ansible-ibm-sterling.git"
         - name: PLAYBOOK_PATH
           value: $(params.playbook-path)
         - name: WORK_DIR

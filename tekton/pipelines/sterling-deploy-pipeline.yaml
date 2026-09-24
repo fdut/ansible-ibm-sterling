@@ -108,6 +108,8 @@ spec:
           value: ""
 
     # B2Bi Sequential Deployment
+    # Each step enables exactly one role via -e boolean flags.
+    # The playbook's own `when:` guards (sb2bi_*_enabled) skip the other roles.
     - name: deploy-b2bi-db2
       when:
         - input: "$(params.deploy-b2bi)"
@@ -123,7 +125,7 @@ spec:
         - name: verbose
           value: ""
         - name: extra-args
-          value: "--tags sb2bi_deploy_db2"
+          value: "-e sb2bi_deploy_db2_enabled=true -e sb2bi_setup_db2_enabled=false -e sb2bi_deploy_mq_enabled=false -e sb2bi_deploy_enabled=false"
 
     - name: setup-b2bi-db2
       when:
@@ -142,7 +144,7 @@ spec:
         - name: verbose
           value: ""
         - name: extra-args
-          value: "--tags sb2bi_setup_db2"
+          value: "-e sb2bi_deploy_db2_enabled=false -e sb2bi_setup_db2_enabled=true -e sb2bi_deploy_mq_enabled=false -e sb2bi_deploy_enabled=false"
 
     - name: deploy-b2bi-mq
       when:
@@ -161,7 +163,7 @@ spec:
         - name: verbose
           value: ""
         - name: extra-args
-          value: "--tags sb2bi_deploy_mq"
+          value: "-e sb2bi_deploy_db2_enabled=false -e sb2bi_setup_db2_enabled=false -e sb2bi_deploy_mq_enabled=true -e sb2bi_deploy_enabled=false"
 
     - name: deploy-b2bi
       when:
@@ -180,7 +182,7 @@ spec:
         - name: verbose
           value: ""
         - name: extra-args
-          value: "--tags sb2bi_deploy"
+          value: "-e sb2bi_deploy_db2_enabled=false -e sb2bi_setup_db2_enabled=false -e sb2bi_deploy_mq_enabled=false -e sb2bi_deploy_enabled=true"
 
     # SCC Sequential Deployment
     - name: deploy-scc-db2
