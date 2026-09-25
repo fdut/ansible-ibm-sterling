@@ -59,7 +59,7 @@ si_actions_defaults:
     env_upgradecompatibilityverified: "false"
 
 si_datasetup_enabled: "{{ lookup('env', 'SI_DATASETUP_ENABLED') | default(si_actions_defaults[si_action].datasetup_enabled, true) }}"
-si_datasetup_upgrade: "{{ lookup('env', 'SI_DATASETUP_UPGRADE') | default(si_actions_defaults[si_action].datasetup_upgrade, true) }}"
+si_datasetup_upgrade: "{{ lookup('env', 'SI_DATASETUP_UPGRADE') | default(si_actions_defaults[si_action].datasetup_upgrade, false) }}"
 si_env_timezone: "{{ lookup('env', 'SI_ENV_TIMEZONE') | default('UTC', true) }}"
 si_env_upgradecompatibilityverified: "{{ lookup('env', 'SI_ENV_UPGRADE_COMPAT_VERIFIED') | default(si_actions_defaults[si_action].env_upgradecompatibilityverified, true) }}"
 si_env_debugmode: "{{ lookup('env', 'SI_ENV_DEBUGMODE') | default('false', true) }}"
