@@ -5,63 +5,8 @@ metadata:
   name: sterling-devops-deploy
   namespace: sterling-deployer
 spec:
-  params:
-    - name: ibm-entitlement-key
-      type: string
-      description: 'IBM entitlement key. Pass directly or leave as "false" to fetch from Secrets Manager.'
-      default: 'false'
   tasks:
-    - name: get-ibm-entitlement-key
-      params:
-        - name: KEY_ID
-          value: 968d7819-f2c5-7b67-c420-3c6bfd51521e
-        - name: SECRETS_MANAGER_ENDPOINT_URL
-          value: 'https://afa20521-cd75-4864-843f-e59fd0ffd49d.us-south.secrets-manager.appdomain.cloud'
-      retries: 2
-      taskRef:
-        kind: Task
-        name: ibmcloud-secrets-manager-get
-      when:
-        - input: $(params.ibm-entitlement-key)
-          operator: in
-          values:
-            - 'false'
-
-    - name: set-ibm-entitlement-key
-      params:
-        - name: ibm-entitlement-key
-          value: $(params.ibm-entitlement-key)
-      retries: 3
-      runAfter:
-        - get-ibm-entitlement-key
-      taskSpec:
-        metadata: {}
-        params:
-          - name: ibm-entitlement-key
-            type: string
-        results:
-          - description: The resolved entitlement key
-            name: effective-entitlement-key
-            type: string
-        spec: null
-        steps:
-          - computeResources: {}
-            image: 'quay.io/devfile/universal-developer-image:latest'
-            name: echo-entitlement-key
-            script: |
-              #!/usr/bin/env bash
-              set -e
-              if [ "$(params.ibm-entitlement-key)" == "false" ]; then
-                echo "Using TechZone provided entitlement key"
-                echo -n "$(tasks.get-ibm-entitlement-key.results.secret-value)" > $(results.effective-entitlement-key.path)
-              else
-                echo "Using user provided entitlement key"
-                echo -n "$(params.ibm-entitlement-key)" > $(results.effective-entitlement-key.path)
-              fi
-
     - name: b2bi-install
-      runAfter:
-        - set-ibm-entitlement-key
       taskSpec:
         metadata: {}
         spec: null
@@ -69,11 +14,16 @@ spec:
           - computeResources: {}
             image: 'quay.io/kishorec/sde:latest'
             name: install-b2bi
+            env:
+              - name: ENTITLED_REGISTRY_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: sterling-deploy-secrets
+                    key: ENTITLED_REGISTRY_KEY
             script: |
               #!/bin/bash
               set -e
 
-              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
               export ANSIBLE_CONFIG=./ansible.cfg
 
               export SI_INSTANCEID=dev01

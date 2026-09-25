@@ -165,9 +165,6 @@ metadata:
 spec:
   pipelineRef:
     name: sterling-devops-deploy
-  params:
-    - name: ibm-entitlement-key
-      value: "${ENTITLED_REGISTRY_KEY}"
   timeout: 3h0m0s
   serviceAccountName: tekton-deployer-sa
 EOF
