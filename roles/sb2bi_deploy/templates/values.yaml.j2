@@ -16,9 +16,7 @@ global:
   licenseType: "{{ si_licensetype }}"
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi"
-  # Provide the tag value in double quotes
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
-  # If digest is specified, it takes precedence over tag
+    tag: "{{ compatibility_matrix[ si_version ].global.image.tag | default('') }}"
     digest:
     pullPolicy: IfNotPresent
     pullSecret: "{{ si_registry_secret }}"
@@ -86,9 +84,9 @@ resourcesInit:
   enabled: true 
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi-resources"
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
+    tag: "{{ compatibility_matrix[ si_version ].resourcesInit.image.tag | default('') }}"
     digest:
-    pullPolicy: "IfNotPresent"
+    pullPolicy: "Always"
   command:
 
 customizationInit:
@@ -154,7 +152,8 @@ extraPVCs: []
   #  predefinedPVCName:
 
 security:
-  supplementalGroups: [65534]
+  # OpenShift will automatically assign supplementalGroups, fsGroup, runAsUser, and runAsGroup from the namespace's UID range
+  supplementalGroups: []
   fsGroup:
   fsGroupChangePolicy: "OnRootMismatch"
   runAsUser:
@@ -171,9 +170,7 @@ dataSetup:
   upgrade: {{ si_datasetup_upgrade }}
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi-dbsetup"
-    # Provide the tag value in double quotes
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
-     # If digest is specified, it takes precedence over tag
+    tag: "{{ compatibility_matrix[ si_version ].dataSetup.image.tag | default('') }}"
     digest:
     pullPolicy: IfNotPresent
     pullSecret: "{{ si_registry_secret }}"
@@ -306,20 +303,20 @@ setupCfg:
   licenseAcceptEnableFinancialServices: false
   licenseAcceptEnableFileOperation: true
 
-  #Enable Sfg2 to access File Gateway 2.0 APIs. 
-  enableSfg2: true
+  #Enable Sfg2 to access File Gateway 2.0 APIs.
+  enableSfg2: {{ si_enableSfg2 | default('false') }}
 
   # Name of system passphrase secret if available
   systemPassphraseSecret: {{ si_system_passphrase_secret }}
   #FIPS compliance mode. specify values as true/false 
-  enableFipsMode: false
+  enableFipsMode: {{ si_helm_values.setupCfg.enableFipsMode | default('false') }}
   #FIPS custom profile name. if unspecified the default profile values will be used. Refer documentation for more details
   fipsCustomProfileName: ""
   #FIPS custom profile file name. if unspecified the default profile values will be used. Refer documentation for more details
   #The file should be placed in the config folder or provided through customization image. Refer documentation for details
   fipsCustomProfileFileName: ""
   # NIST 800-131a compliance mode. Please enter one of these values - strict/transition/"off"
-  nistComplianceMode: "off"
+  nistComplianceMode: "{{ si_helm_values.setupCfg.nistComplianceMode | default('off') }}"
 
   # Provide the DB attributes
   dbVendor: {{ si_dbvendor }}
@@ -408,7 +405,7 @@ setupCfg:
   libertyJvmOptions:
 
   # Name of Client secret which contains client id and client secret.
-  clientSecret:
+  clientSecret: "identity-client-secret"
  
   # The authentication type used for legacy B2BI/SFG APIs and Customization UI. Supported values are "basic" and "oauth". Default is "basic".
   legacyApisAuthType: basic
@@ -1299,22 +1296,18 @@ test:
     tag: "{{ compatibility_matrix[ si_version ].test.image.tag | default('') }}"
     digest:
     pullPolicy: 'IfNotPresent'
-  extraLabels: {}  
-  #configuration to add custom annotations, if any
-  #  #  extraAnnotations: {}
+    pullSecret: "{{ si_registry_secret }}"
+  extraLabels: {}
 
 purge:
   enabled: true
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi-purge"
-  # Provide the tag value in double quotes
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
+    tag: "{{ compatibility_matrix[ si_version ].purge.image.tag | default('') }}"
     digest:
     pullPolicy: IfNotPresent
     pullSecret: "{{ si_registry_secret }}"
-  extraLabels: {}
-  #configuration to add custom annotations, if any
-  #  #  extraAnnotations: {}
+    extraLabels: {}
   # Provide a schedule for the purge job as a cron expression. For example "0 0 * * *" will run the purge job at 00:00 every day
   schedule: "{{ si_helm_values.purge.schedule }}"
   startingDeadlineSeconds: 60
@@ -1361,7 +1354,7 @@ documentService:
   image:
     repository: cp.icr.io/cp/ibm-b2bi/b2bi-documentservice
     pullPolicy: IfNotPresent
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
+    tag: "{{ compatibility_matrix[ si_version ].documentService.image.tag | default('') }}"
     digest:
     pullSecret: "{{ si_registry_secret }}"
   serviceAccount:
@@ -1400,7 +1393,7 @@ as4Service:
   licenseType: "{{ si_licensetype }}"
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi-as4service"
-    tag: "{{ compatibility_matrix[ si_version ].image_tag }}"
+    tag: "{{ compatibility_matrix[ si_version ].as4Service.image.tag | default('') }}"
     digest:
     pullPolicy: IfNotPresent
     pullSecret:
@@ -1409,11 +1402,11 @@ as4Service:
   dataSetup:
     enabled: true
   dbSetup:
-    dbVendor: {{ si_dbvendor }}
-    dbHost: {{ si_dbhost }}
-    dbPort: {{ si_dbport }}
-    dbDrivers: {{ si_dbdrivers }}
-    dbSecret: {{ si_db_secret }}
+    dbVendor:
+    dbHost:
+    dbPort:
+    dbDrivers:
+    dbSecret:
   mqSetup:
     mqHost:
     mqPort:
@@ -1423,33 +1416,31 @@ as4Service:
   as4operational:
     ingress:
       internal:
-        host: "{{ si_helm_values.as4Service.as4operational.ingress.internal.host }}"
+        host:
   as4informational:
     ingress:
       internal:
-        host: "{{ si_helm_values.as4Service.as4informational.ingress.internal.host }}"
+        host:
 
 identityService:
-  enabled: true
+  enabled: {{ si_enableSfg2 | default('false') }}
   license: true
   replicaCount: 1
   image:
     repository: "cp.icr.io/cp/ibm-b2bi/b2bi-identityservice"
-    # Provide the tag value in double quotes
-    tag: "1.0.0.0"
-    # If digest is specified, it takes precedence over tag
-    digest: ""
+    tag: "{{ compatibility_matrix[ si_version ].identityService.image.tag | default('') }}"
+    digest:
     pullPolicy: IfNotPresent
-    pullSecret: "{{ si_registry_secret }}"
+    pullSecret: ""
   serviceAccount:
     name: default
   service:
     type: ClusterIP
     externalPort: 443
-    externalIP: ""
+    externalIP:
   ingress:
     enabled: true
-    host: "{{ si_helm_values.identityService.ingress.internal.host }}"
+    host: "id-{{ si_instanceid }}.{{ cluster_domain.stdout }}"
   application:
     server:
       ssl:

@@ -37,26 +37,13 @@
             host: "api.{{ si_instanceid }}.{{ route_domain }}"
       purge:
         schedule: "0 0 * * *"
-      as4Service:
-        as4operational:
-          ingress:
-            internal:
-              host: "as4o.{{ si_instanceid }}.{{ route_domain }}"
-        as4informational:
-          ingress:
-            internal:
-              host: "as4i.{{ si_instanceid }}.{{ route_domain }}"
-      identityService:
-        ingress:
-          internal:
-            host: "ids.{{ si_instanceid }}.{{ route_domain }}"
 
 - name: "Set fact helm file"
   ansible.builtin.set_fact:
-    my_helmfile: "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version].helm_version }}.tgz"
+    my_helmfile: "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version]['helm_version'] }}.tgz"
     my_valuesfile: "{{ my_workdir }}/myb2bi_values-{{ my_serial }}.yml"
 
-- name: "Generate my_values yml"
+- name: Generate my_values.yml
   ansible.builtin.template:
     src: "values.yaml.j2"
     dest: "{{ my_valuesfile }}"
@@ -70,7 +57,7 @@
 - name: Run Helm install command
   ansible.builtin.command:
     cmd: "helm install --timeout 120m0s -f {{ my_valuesfile }} -n {{ si_namespace }} s0 {{ my_helmfile }}"
-  when: not (si_skip_helm | bool)
+  when: not si_skip_helm
   register: helm_cout
 # --wait
 

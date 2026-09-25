@@ -31,14 +31,14 @@ runAsUser:
   type: MustRunAsRange
 # This can be customized for your host machine
 seLinuxContext:
-  type: MustRunAs
+  type: RunAsAny
 # seLinuxOptions:
 #   level:
 #   user:
 #   role:
 #   type:
 supplementalGroups:
-  type: MustRunAs
+  type: RunAsAny
   ranges:
     - min: 1
       max: 4294967294

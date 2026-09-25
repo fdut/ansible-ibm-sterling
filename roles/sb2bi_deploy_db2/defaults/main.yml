@@ -2,7 +2,7 @@
 # Configure Db2 instance
 # -----------------------------------------------------------------------------------------------------------------
 si_instanceid: "{{ lookup('env', 'SI_INSTANCEID') }}"
-db2_namespace: "sterling-b2bi-{{ si_instanceid }}-db2"
+db2_namespace: "ibm-b2bi-{{ si_instanceid }}-db2"
 db2_password: "{{ lookup('env', 'DB2_PASSWORD') | default('passw0rd', true) }}"
 db2_version: "{{ lookup('env', 'DB2_VERSION') | default('11.5.9.0', true) }}"
 
@@ -37,15 +37,15 @@ storage_class_matrix:
     rom: ""                     # ReadOnlyMany
     rwop: ""                    # ReadWriteOncePod
   redhat:
-    rwx: "ocs-storagecluster-cephfs"
-    rwx_nogid: "ocs-storagecluster-cephfs"
-    rwo: "ocs-storagecluster-cephfs" # "ocs-storagecluster-ceph-rbd"
+    rwx: "ocs-external-storagecluster-cephfs"
+    rwx_nogid: "ocs-external-storagecluster-cephfs"
+    rwo: "ocs-external-storagecluster-cephfs" # "ocs-storagecluster-ceph-rbd"
     rom: ""
     rwop: ""
   aws:
     rwx: "efs"
     rwx_nogid: "efs"
-    rwo: "gp3"
+    rwo: "gp2"
     rom: ""
     rwop: ""
   azure:
@@ -75,12 +75,6 @@ storage_class_matrix:
   ibm-fyre2:
     rwx: "ocs-external-storagecluster-cephfs"
     rwx_nogid: "ocs-external-storagecluster-cephfs"
-    rwo: "ocs-external-storagecluster-ceph-rbd"
+    rwo: "ocs-external-storagecluster-cephfs"
     rom: "ocs-external-storagecluster-cephfs"
-    rwop: ""
-  hpe-storage:
-    rwx: "hpe-nfs"
-    rwx_nogid: "hpe-nfs"
-    rwo: "hpe-standard"
-    rom: "hpe-nfs"
     rwop: ""

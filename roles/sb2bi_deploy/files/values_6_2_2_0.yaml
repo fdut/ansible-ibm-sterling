@@ -306,7 +306,7 @@ setupCfg:
   licenseAcceptEnableFileOperation: false
 
   #Enable Sfg2 to access File Gateway 2.0 APIs. 
-  enableSfg2: false
+  enableSfg2: true
 
   # Name of system passphrase secret if available
   systemPassphraseSecret: 
@@ -1456,7 +1456,7 @@ identityService:
   service:
     type: ClusterIP
     externalPort: 443
-    externalIP: ""
+    externalIP:
   ingress:
     enabled: true
     host: ""

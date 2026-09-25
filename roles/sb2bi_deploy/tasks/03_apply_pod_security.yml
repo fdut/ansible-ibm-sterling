@@ -4,20 +4,20 @@
     path: "{{ item }}"
     state: absent
   with_items:
-    - "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version].helm_version }}.tgz"
+    - "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version]['helm_version'] }}.tgz"
     - "{{ my_workdir }}/ibm-b2bi-prod"
 
 - name: "Download Helm chart"
   ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/IBM/charts/master/repo/ibm-helm/ibm-b2bi-prod-{{ compatibility_matrix[si_version].helm_version }}.tgz"
-    dest: "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version].helm_version }}.tgz"
+    url: "https://raw.githubusercontent.com/IBM/charts/master/repo/ibm-helm/ibm-b2bi-prod-{{ compatibility_matrix[si_version]['helm_version'] }}.tgz"
+    dest: "{{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version]['helm_version'] }}.tgz"
     mode: "0666"
   register: download_cout
   until: download_cout is succeeded
   retries: 3
 
 # - name: "Extract Helm chart"
-#   ansible.builtin.command: "tar -xzvf {{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version].helm_version }}.tgz -C {{ my_workdir }}"
+#   ansible.builtin.command: "tar -xzvf {{ my_workdir }}/ibm-b2bi-prod-{{ compatibility_matrix[si_version]['helm_version'] }}.tgz -C {{ my_workdir }}"
 #   register: untar_cout
 #   changed_when: ( untar_cout.rc == 0)
 
@@ -77,5 +77,13 @@
 - name: Adding all namespace users to SCC...
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('template', 'templates/ibm-b2bi-rb-scc.yaml.j2') | from_yaml }}"
+    template: 'ibm-b2bi-rb-scc.yaml.j2'
+  when: scc_resource and scc_apiversion
+
+- name: Grant SCC to service account using oc adm policy
+  ansible.builtin.command:
+    cmd: "oc adm policy add-scc-to-user ibm-b2bi-scc -z default -n {{ si_namespace }}"
+  register: scc_grant
+  changed_when: "'added' in scc_grant.stdout or 'scc \"ibm-b2bi-scc\" added' in scc_grant.stdout"
+  failed_when: false
   when: scc_resource and scc_apiversion

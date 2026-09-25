@@ -110,8 +110,8 @@
                 volumeMounts:
                   - mountPath: /database
                     name: db2vol
-            imagePullSecrets:
-              - name: "{{ db2_registry_secret }}"
+                imagePullSecrets:
+                  - name: "{{ db2_registry_secret }}"
         volumeClaimTemplates:
           - metadata:
               name: db2vol
@@ -132,7 +132,7 @@
       - app-instance={{ db2_instance_name }}
     wait: true
     wait_sleep: 30
-    wait_timeout: 300 # 5 mins until we give up waiting for the pod to get into the expected state
+    wait_timeout: 600 # 5 mins until we give up waiting for the pod to get into the expected state
     wait_condition:
       type: Ready
       status: "True"

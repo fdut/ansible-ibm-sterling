@@ -1,0 +1,440 @@
+﻿apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  creationTimestamp: '2026-09-15T15:09:00Z'
+  generation: 1
+  managedFields:
+    - apiVersion: tekton.dev/v1
+      fieldsType: FieldsV1
+      fieldsV1:
+        'f:metadata':
+          'f:ownerReferences':
+            .: {}
+            'k:{"uid":"fb50925f-fe2a-4cd8-8a50-41aec0b1d570"}': {}
+        'f:spec':
+          .: {}
+          'f:params': {}
+          'f:tasks': {}
+      manager: manager
+      operation: Update
+      time: '2026-09-15T15:09:00Z'
+  name: sterling-devops-deploy
+  namespace: default
+  ownerReferences:
+    - apiVersion: techzone.techzone.ibm.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: Installation
+      name: deployer-sterling
+      uid: fb50925f-fe2a-4cd8-8a50-41aec0b1d570
+  resourceVersion: '46210'
+  uid: 11756b12-af62-45c0-9d00-e06448e65fae
+spec:
+  params:
+    - default: 'false'
+      description: 'IBM entitlement key. If not set, will use secret manager.'
+      name: ibm-entitlement-key
+      type: string
+  tasks:
+    - name: get-ibm-entitlement-key
+      params:
+        - name: KEY_ID
+          value: 968d7819-f2c5-7b67-c420-3c6bfd51521e
+        - name: SECRETS_MANAGER_ENDPOINT_URL
+          value: 'https://afa20521-cd75-4864-843f-e59fd0ffd49d.us-south.secrets-manager.appdomain.cloud'
+      retries: 2
+      taskRef:
+        kind: Task
+        name: ibmcloud-secrets-manager-get
+      when:
+        - input: $(params.ibm-entitlement-key)
+          operator: in
+          values:
+            - 'false'
+    - name: set-ibm-entitlement-key
+      params:
+        - name: ibm-entitlement-key
+          value: $(params.ibm-entitlement-key)
+      retries: 3
+      runAfter:
+        - get-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        params:
+          - name: ibm-entitlement-key
+            type: string
+        results:
+          - description: The resolved entitlement key
+            name: effective-entitlement-key
+            type: string
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/devfile/universal-developer-image:latest'
+            name: echo-entitlement-key
+            script: |
+              #!/usr/bin/env bash
+              set -e
+              if [ "$(params.ibm-entitlement-key)" == "false" ]; then
+                echo "Using TechZone provided entitlement key"
+                echo -n "$(tasks.get-ibm-entitlement-key.results.secret-value)" > $(results.effective-entitlement-key.path)
+              else
+                echo "Using user provided entitlement key"
+                echo -n "$(params.ibm-entitlement-key)" > $(results.effective-entitlement-key.path)
+              fi
+    - name: b2bi-install
+      runAfter:
+        - set-ibm-entitlement-key
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-b2bi
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SI_INSTANCEID=dev01
+              export SI_VERSION=6.2.2.0
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running B2BI install via Ansible..."
+              ansible-playbook playbooks/deploy_sb2b.yml
+              echo "B2BI Ansible playbook finished"
+      timeout: 24h0m0s
+    - name: ssp-install
+      runAfter:
+        - b2bi-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-ssp
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SSP_INSTANCEID=dev01
+              export SSP_VERSION=6.2.1.1-iFix00-2025-10-15
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running SSP install via Ansible..."
+              ansible-playbook playbooks/deploy_ssp.yml
+              echo "SSP Ansible playbook finished"
+    - name: seas-install
+      runAfter:
+        - ssp-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-seas
+            script: |
+              #!/bin/bash
+              set -e
+
+              echo "=== Step 1: Environment Check ==="
+              env | sort
+              echo "=== Step 2: Check oc access ==="
+              oc version || echo "oc failed with code $?"
+              echo "=== Step 3: Check current context ==="
+              oc whoami || echo "oc whoami failed with code $?"
+              oc project || echo "oc project failed with code $?"
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SEAS_INSTANCEID=dev01
+              export SEAS_VERSION=6.1.1.2-iFix00-2025-12-18
+
+              echo "=== Step 4: Git Clone ==="
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git || echo "Git clone failed with code $?"
+              cd ansible-ibm-sterling
+
+              echo "=== Step 5: List files ==="
+              ls -ltr
+
+              echo "=== Step 6: Helm Installation ==="
+              HELM_VERSION=v3.18.3
+
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz || echo "Helm download failed with code $?"
+              tar -zxvf helm.tar.gz || echo "Helm extraction failed with code $?"
+
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm || echo "Helm move failed with code $?"
+              chmod +x /workspace/bin/helm
+
+              export PATH="/workspace/bin:$PATH"
+              helm version || echo "Helm version check failed with code $?"
+
+              echo "=== Step 7: Running Ansible Playbook ==="
+              ansible-playbook playbooks/deploy_seas.yml || echo "Ansible playbook failed with code $?"
+              echo "SEAS Ansible playbook finished"
+    - name: scc-install
+      runAfter:
+        - seas-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-scc
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export SCC_PRODUCTS=CCM,CCD
+              export SCC_INSTANCEID=dev01
+              export SCC_VERSION=6.4.2.0_2025-11-18
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running SCC install via Ansible..."
+              ansible-playbook playbooks/deploy_scc.yml
+              echo "SCC Ansible playbook finished"
+      timeout: 24h0m0s
+    - name: cd-install
+      runAfter:
+        - scc-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-cd
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export CD_NODENAME=CDNODE01
+              export CD_NAMESPACE=ibm-cd-dev01-app
+              export CD_VERSION=6.4.0.2-iFix008-2025-08-21
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running CD install via Ansible..."
+              ansible-playbook playbooks/deploy_cd.yml
+              echo "CD Ansible playbook finished"
+    - name: cdws-install
+      runAfter:
+        - cd-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-cdws
+            script: |
+              #!/bin/bash
+              set -e
+
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+
+              export CDWS_NAMESPACE=ibm-cdws-dev01-app
+              export CDWS_VERSION=6.4.0.2_ifix001
+
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+
+              ls -ltr
+
+              # Set Helm version
+              HELM_VERSION=v3.18.3
+
+              # Download and extract Helm
+              curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz
+              tar -zxvf helm.tar.gz
+
+              # Move helm binary to a local bin directory (e.g., /workspace/bin) and add to PATH
+              mkdir -p /workspace/bin
+              mv linux-amd64/helm /workspace/bin/helm
+              chmod +x /workspace/bin/helm
+
+              # Add it to PATH
+              export PATH="/workspace/bin:$PATH"
+
+              # Verify installation
+              helm version
+
+              echo "Running CDWS install via Ansible..."
+              ansible-playbook playbooks/deploy_cdws.yml
+              echo "CDWS Ansible playbook finished"
+    - name: minio-install
+      runAfter:
+        - cdws-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-minio
+            script: |
+              #!/bin/bash
+              set -e
+              export ENTITLED_REGISTRY_KEY="$(tasks.set-ibm-entitlement-key.results.effective-entitlement-key)"
+              export ANSIBLE_CONFIG=./ansible.cfg
+              export MINIO_NAMESPACE=ibm-minio
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+              ls -ltr
+              echo "Running Minio install via Ansible..."
+              ansible-playbook playbooks/tools/minio.yml
+              echo "Minio Ansible playbook finished"
+    - name: kafka-install
+      runAfter:
+        - minio-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-kafka
+            script: |
+              #!/bin/bash
+              set -e
+              export ANSIBLE_CONFIG=./ansible.cfg
+              export SI_INSTANCE_ID=dev01
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+              ls -ltr
+              echo "Running Kafka install via Ansible..."
+              ansible-playbook playbooks/tools/kafka.yml
+              echo "Kafka Ansible playbook finished"
+    - name: kowl-install
+      runAfter:
+        - kafka-install
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+          - computeResources: {}
+            image: 'quay.io/kishorec/sde:latest'
+            name: install-kowl
+            script: |
+              #!/bin/bash
+              set -e
+              export ANSIBLE_CONFIG=./ansible.cfg
+              export SI_INSTANCE_ID=dev01
+              echo "Cloning Sterling automation repository"
+              git clone https://github.com/ckpkishore/ansible-ibm-sterling.git
+              cd ansible-ibm-sterling
+              ls -ltr
+              echo "Running Kowl install via Ansible..."
+              ansible-playbook playbooks/tools/kowl.yml
+              echo "Kowl Ansible playbook finished"

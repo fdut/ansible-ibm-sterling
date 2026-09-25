@@ -7,14 +7,14 @@
 #   2. Installs OpenShift Pipelines operator (if not already present)
 #   3. Creates the sterling-deploy-secrets Secret (OCP token + entitlement key)
 #   4. Creates a service account with cluster-admin
-#   5. Applies the B2Bi ConfigMap, Tekton Task and Pipeline
-#   6. Triggers a PipelineRun for deploy-b2bi
+#   5. Applies the Tekton Pipeline (pipeline-sterling-devops-deploy.yaml)
+#   6. Triggers a PipelineRun for b2bi-install
 #
 # Usage:
 #   export ENTITLED_REGISTRY_KEY="<your-ibm-entitlement-key>"
 #   export SI_DBPASSWORD="<db2-password>"          # optional but recommended
 #   export SI_JMS_PASSWORD="<mq-password>"         # optional but recommended
-#   ./tekton/tekton-setup-b2bi.sh [install|uninstall]
+#   ./tekton-setup-b2bi.sh [install|uninstall]
 #
 # Requires: oc (already logged in), kubectl
 # =============================================================================
@@ -49,9 +49,7 @@ if [[ "$ACTION" == "uninstall" ]]; then
   info "Deleting PipelineRun deploy-sterling-b2bi ..."
   oc delete pipelinerun deploy-sterling-b2bi -n "$NAMESPACE" --ignore-not-found
   info "Deleting Tekton resources in namespace $NAMESPACE ..."
-  oc delete -f "$TEKTON_DIR/pipelines/sterling-deploy-pipeline.yaml" -n "$NAMESPACE" --ignore-not-found
-  oc delete -f "$TEKTON_DIR/tasks/sterling-deploy-task.yaml"         -n "$NAMESPACE" --ignore-not-found
-  oc delete configmap sterling-b2bi-config                            -n "$NAMESPACE" --ignore-not-found
+  oc delete -f "$TEKTON_DIR/pipelines/pipeline-sterling-devops-deploy.yaml" -n "$NAMESPACE" --ignore-not-found
   ok "Tekton resources removed. Namespace $NAMESPACE kept (use 'oc delete ns $NAMESPACE' to fully remove)."
   exit 0
 fi
@@ -143,24 +141,36 @@ else
   ok "Service account tekton-deployer-sa already exists"
 fi
 
-# 6. ConfigMap
-info "Applying B2Bi ConfigMap ..."
-oc apply -f "$TEKTON_DIR/config/configmap-b2bi.yaml" -n "$NAMESPACE"
-ok "ConfigMap sterling-b2bi-config applied"
-
-# 7. Tekton Task & Pipeline
-info "Applying Tekton Task ..."
-oc apply -f "$TEKTON_DIR/tasks/sterling-deploy-task.yaml" -n "$NAMESPACE"
-ok "Task sterling-deploy-task applied"
-
+# 6. Tekton Pipeline
 info "Applying Tekton Pipeline ..."
-oc apply -f "$TEKTON_DIR/pipelines/sterling-deploy-pipeline.yaml" -n "$NAMESPACE"
-ok "Pipeline sterling-deploy-pipeline applied"
+oc apply -f "$TEKTON_DIR/pipelines/pipeline-sterling-devops-deploy.yaml" -n "$NAMESPACE"
+ok "Pipeline sterling-devops-deploy applied"
 
-# 8. PipelineRun — delete old one if exists, then create fresh
+# 7. PipelineRun — delete old one if exists, then create fresh
 info "Triggering PipelineRun deploy-sterling-b2bi ..."
 oc delete pipelinerun deploy-sterling-b2bi -n "$NAMESPACE" --ignore-not-found
-oc create -f "$TEKTON_DIR/runs/deploy-b2bi.yaml" -n "$NAMESPACE"
+oc create -n "$NAMESPACE" -f - <<EOF
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: deploy-sterling-b2bi
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: sterling-b2bi
+    app.kubernetes.io/component: deployment
+    tekton.dev/pipeline: sterling-devops-deploy
+  annotations:
+    description: "Deploy B2Bi via pipeline-sterling-devops-deploy"
+spec:
+  pipelineRef:
+    name: sterling-devops-deploy
+  params:
+    - name: ibm-entitlement-key
+      value: "${ENTITLED_REGISTRY_KEY}"
+  timeout: 3h0m0s
+  serviceAccountName: tekton-deployer-sa
+EOF
 ok "PipelineRun deploy-sterling-b2bi submitted"
 
 echo ""
@@ -173,5 +183,5 @@ echo "  oc get pipelinerun -n $NAMESPACE -w"
 echo "  tkn pipelinerun logs deploy-sterling-b2bi -f -n $NAMESPACE"
 echo ""
 echo "Expected duration: 60–90 minutes"
-echo "Stages: deploy-b2bi-db2 → setup-b2bi-db2 → deploy-b2bi-mq → deploy-b2bi"
+echo "Stages: get-ibm-entitlement-key → set-ibm-entitlement-key → b2bi-install"
 echo "==========================================================="

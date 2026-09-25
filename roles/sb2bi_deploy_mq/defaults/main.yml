@@ -1,6 +1,6 @@
 ---
 si_instanceid: "{{ lookup('env', 'SI_INSTANCEID') }}"
-mq_namespace: "sterling-b2bi-{{ si_instanceid }}-mq"
+mq_namespace: "ibm-b2bi-{{ si_instanceid }}-mq"
 mq_name: "{{ lookup('env', 'MQ_NAME') | default('mq', true) }}"
 
 mq_version: "{{ lookup('env', 'MQ_VERSION') | default('9.2.5.0-r3', true) }}"
@@ -31,15 +31,15 @@ storage_class_matrix:
     rom: ""                     # ReadOnlyMany
     rwop: ""                    # ReadWriteOncePod
   redhat:
-    rwx: "ocs-storagecluster-cephfs"
-    rwx_nogid: "ocs-storagecluster-cephfs"
-    rwo: "ocs-storagecluster-ceph-rbd"
+    rwx: "ocs-external-storagecluster-cephfs"
+    rwx_nogid: "ocs-external-storagecluster-cephfs"
+    rwo: "ocs-external-storagecluster-cephfs"
     rom: ""
     rwop: ""
   aws:
     rwx: "efs"
     rwx_nogid: "efs"
-    rwo: "gp3"
+    rwo: "gp2"
     rom: ""
     rwop: ""
   azure:
@@ -69,6 +69,6 @@ storage_class_matrix:
   ibm-fyre2:
     rwx: "ocs-external-storagecluster-cephfs"
     rwx_nogid: "ocs-external-storagecluster-cephfs"
-    rwo: "ocs-external-storagecluster-ceph-rbd"
+    rwo: "ocs-external-storagecluster-cephfs"
     rom: "ocs-external-storagecluster-cephfs"
     rwop: ""

@@ -110,11 +110,27 @@
       - (mq_namespace != "") or (si_jmsuser != "")
     fail_msg: "JMS Queue Information property is required"
 
-# 5. Serial ID
+# 5. Check if identityService is available and enable SFG2
+# -----------------------------------------------------------------------------
+- name: Check if identityService image tag is defined in compatibility matrix
+  ansible.builtin.set_fact:
+    si_enableSfg2: true
+  when:
+    - compatibility_matrix[si_version].identityService is defined
+    - compatibility_matrix[si_version].identityService.image is defined
+    - compatibility_matrix[si_version].identityService.image.tag is defined
+    - compatibility_matrix[si_version].identityService.image.tag != ""
+
+# 6. Serial ID
 # -----------------------------------------------------------------------------
 - name: Unique Id for files
   ansible.builtin.set_fact:
     my_serial: "{{ lookup('password', '/dev/null length=8 chars=ascii_lowercase,digits') }}"
+
+# -----------------------------------------------------------------------------
+- name: Get OpenShift cluster domain
+  command: oc get ingresses.config.openshift.io cluster -o jsonpath='{.spec.domain}'
+  register: cluster_domain
 
 # Debug
 # -----------------------------------------------------------------------------
@@ -125,4 +141,5 @@
       - "SI namespace ................. {{ si_namespace }}"
       - "Database Namespace ........... {{ db2_namespace }}"
       - "JMS Queue Namespace .......... {{ mq_namespace }}"
-      - "my_serial ...................... {{ my_serial }}"
+      - "SI Enable SFG2 ............... {{ si_enableSfg2 | default('false') }}"
+      - "my_serial .................... {{ my_serial }}"

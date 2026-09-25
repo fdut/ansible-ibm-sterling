@@ -26,7 +26,7 @@
     my_storage_class: "redhat"
   when:
     - my_storage_class is not defined
-    - "'ocs-storagecluster-cephfs' in my_storage_list"
+    - "'ocs-external-storagecluster-cephfs' in my_storage_list"
 
 - name: Check for AWS StorageClass
   ansible.builtin.set_fact:

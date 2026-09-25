@@ -71,9 +71,9 @@ si_itxa_enabled: "{{ lookup('env', 'SI_ITXA_ENABLED') | default('false', true) }
 # -----------------------------------------------------------------------------
 my_workdir: /tmp
 
-si_namespace: "sterling-b2bi-{{ si_instanceid }}-app"
-si_db2_namespace: "sterling-b2bi-{{ si_instanceid }}-db2"
-si_mq_namespace: "sterling-b2bi-{{ si_instanceid }}-mq"
+si_namespace: "ibm-b2bi-{{ si_instanceid }}-app"
+si_db2_namespace: "ibm-b2bi-{{ si_instanceid }}-db2"
+si_mq_namespace: "ibm-b2bi-{{ si_instanceid }}-mq"
 si_registry_secret: si-ibm-registry
 si_system_passphrase_secret: si-system-passphrase-secret
 si_db_secret: si-db-secret
@@ -100,10 +100,18 @@ compatibility_matrix:
   6.2.2.0:
     helm_version: "3.2.0"
     ocp_min_version: "4.16"
-    k8s_min_version: "1.31"
-    k8s_max_version: "1.34"
-    image_tag: "6.2.2.0"
+    k8s_min_version: "1.30"
+    k8s_max_version: "1.33"
+    global:
+      image:
+        tag: "6.2.2.0"
+    resourcesInit:
+      image:
+        tag: "6.2.2.0"
     customizationInit:
+      image:
+        tag: "6.2.2.0"
+    dataSetup:
       image:
         tag: "6.2.2.0"
     integrations:
@@ -121,13 +129,33 @@ compatibility_matrix:
     test:
       image:
         tag: '1.1.69'
+    purge:
+      image:
+        tag: "6.2.2.0"
+    documentService:
+      image:
+        tag: "6.2.2.0"
+    as4Service:
+      image:
+        tag: "6.2.2.0"
+    identityService:
+      image:
+        tag: "1.0.0.0"
   6.2.1.1:
     helm_version: "3.1.1"
     ocp_min_version: "4.16"
     k8s_min_version: "1.30"
     k8s_max_version: "1.33"
-    image_tag: "6.2.1.1"
+    global:
+      image:
+        tag: "6.2.1.1"
+    resourcesInit:
+      image:
+        tag: "6.2.1.1"
     customizationInit:
+      image:
+        tag: "6.2.1.1"
+    dataSetup:
       image:
         tag: "6.2.1.1"
     integrations:
@@ -145,13 +173,30 @@ compatibility_matrix:
     test:
       image:
         tag: '1.1.68'
+    purge:
+      image:
+        tag: "6.2.1.1"
+    documentService:
+      image:
+        tag: "6.2.1.1"
+    as4Service:
+      image:
+        tag: "6.2.1.1"
   6.2.1.0:
     helm_version: "3.1.0"
     ocp_min_version: "4.14"
     k8s_min_version: "1.27"
     k8s_max_version: "1.30"
-    image_tag: "6.2.1.0"
+    global:
+      image:
+        tag: "6.2.1.0"
+    resourcesInit:
+      image:
+        tag: "6.2.1.0"
     customizationInit:
+      image:
+        tag: "6.2.1.0"
+    dataSetup:
       image:
         tag: "6.2.1.0"
     integrations:
@@ -169,12 +214,64 @@ compatibility_matrix:
     test:
       image:
         tag: '1.1.68'
+    purge:
+      image:
+        tag: "6.2.1.0"
+    documentService:
+      image:
+        tag: "6.2.1.0"
+    as4Service:
+      image:
+        tag: "6.2.1.0"
+  6.2.0.5:
+    helm_version: "3.0.7"
+    ocp_min_version: "4.14"
+    k8s_min_version: "1.27"
+    k8s_max_version: "1.30"
+    global:
+      image:
+        tag: "6.2.0.5"
+    resourcesInit:
+      image:
+        tag: "6.2.0.5"
+    dataSetup:
+      image:
+        tag: "6.2.0.5"
+    integrations:
+      seasIntegration:
+        seasVersion: "1.0"
+      itxIntegration:
+        image:
+          tag: "10.1.2.1.20241122"
+      itxaIntegration:
+        image:
+          tag: "10.0.1.10-x86_64"
+        resourcesInit:
+          image:
+            tag: "10.0.1.10-x86_64"
+    test:
+      image:
+        tag: '1.1.68'
+    purge:
+      image:
+        tag: "6.2.0.5"
+    documentService:
+      image:
+        tag: 1.0.0.5
   6.2.0.4:
     helm_version: "3.0.6"
     ocp_min_version: "4.14"
     k8s_min_version: "1.27"
     k8s_max_version: "1.30"
-    image_tag: "6.2.0.4"
+    global:
+      image:
+        tag: "6.2.0.4"
+    resourcesInit:
+      image:
+        tag: "6.2.0.4"
+    dataSetup:
+      image:
+        tag: "6.2.0.4"
     integrations:
       seasIntegration:
         seasVersion: "1.0"
@@ -190,6 +287,9 @@ compatibility_matrix:
     test:
       image:
         tag: '1.1.67'
+    purge:
+      image:
+        tag: "6.2.0.4"
     documentService:
       image:
         tag: 1.0.0.4
@@ -198,7 +298,6 @@ compatibility_matrix:
     ocp_min_version: "4.14"
     k8s_min_version: "1.27"
     k8s_max_version: "1.30"
-    image_tag: "6.2.0.3"
     global:
       image:
         tag: "6.2.0.3"
@@ -234,7 +333,6 @@ compatibility_matrix:
     ocp_min_version: "4.14"
     k8s_min_version: "1.27"
     k8s_max_version: "1.29"
-    image_tag: "6.2.0.2"
     global:
       image:
         tag: "6.2.0.2"
@@ -270,7 +368,6 @@ compatibility_matrix:
     ocp_min_version: "4.13"
     k8s_min_version: "1.26"
     k8s_max_version: "1.28"
-    image_tag: "6.2.0.1"
     global:
       image:
         tag: "6.2.0.1"
@@ -313,15 +410,15 @@ storage_class_matrix:
     rom: "ibmc-file-gold-gid"       # ReadOnlyMany  #FIXME need to define this value
     rwop: ""                    # ReadWriteOncePod
   redhat:
-    rwx: "ocs-storagecluster-cephfs"
-    rwx_nogid: "ocs-storagecluster-cephfs"
-    rwo: "ocs-storagecluster-ceph-rbd"
-    rom: "ocs-storagecluster-cephfs"
+    rwx: "ocs-external-storagecluster-cephfs"
+    rwx_nogid: "ocs-external-storagecluster-cephfs"
+    rwo: "ocs-external-storagecluster-cephfs"
+    rom: "ocs-external-storagecluster-cephfs"
     rwop: ""
   aws:
     rwx: "efs"
     rwx_nogid: "efs"
-    rwo: "gp3"
+    rwo: "gp2"
     rom: ""
     rwop: ""
   azure:
@@ -351,12 +448,6 @@ storage_class_matrix:
   ibm-fyre2:
     rwx: "ocs-external-storagecluster-cephfs"
     rwx_nogid: "ocs-external-storagecluster-cephfs"
-    rwo: "ocs-external-storagecluster-ceph-rbd"
+    rwo: "ocs-external-storagecluster-cephfs"
     rom: "ocs-external-storagecluster-cephfs"
-    rwop: ""
-  hpe-storage:
-    rwx: "hpe-nfs"
-    rwx_nogid: "hpe-nfs"
-    rwo: "hpe-standard"
-    rom: "hpe-nfs"
     rwop: ""
