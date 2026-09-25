@@ -5,6 +5,8 @@ metadata:
   name: sterling-devops-deploy
   namespace: sterling-deployer
 spec:
+  taskRunTemplate:
+    serviceAccountName: tekton-deployer-sa
   tasks:
     - name: b2bi-install
       taskSpec:

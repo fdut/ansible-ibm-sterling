@@ -130,16 +130,23 @@ oc create secret generic sterling-deploy-secrets \
   -n "$NAMESPACE"
 ok "Secret sterling-deploy-secrets created"
 
-# 5. Service account
+# 5. Service accounts
 if ! oc get serviceaccount tekton-deployer-sa -n "$NAMESPACE" &>/dev/null; then
   info "Creating service account tekton-deployer-sa ..."
   oc create serviceaccount tekton-deployer-sa -n "$NAMESPACE"
-  oc adm policy add-cluster-role-to-user cluster-admin \
-    -z tekton-deployer-sa -n "$NAMESPACE"
-  ok "Service account created with cluster-admin"
+  ok "Service account tekton-deployer-sa created"
 else
   ok "Service account tekton-deployer-sa already exists"
 fi
+oc adm policy add-cluster-role-to-user cluster-admin \
+  -z tekton-deployer-sa -n "$NAMESPACE"
+ok "cluster-admin bound to tekton-deployer-sa"
+
+# Also grant cluster-admin to the Tekton default 'pipeline' SA so that
+# runs triggered without an explicit serviceAccountName still succeed.
+oc adm policy add-cluster-role-to-user cluster-admin \
+  -z pipeline -n "$NAMESPACE" 2>/dev/null || true
+ok "cluster-admin bound to pipeline SA"
 
 # 6. Tekton Pipeline
 info "Applying Tekton Pipeline ..."
